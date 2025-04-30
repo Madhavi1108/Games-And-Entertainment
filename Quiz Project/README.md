@@ -3,7 +3,7 @@
 A classic Snake game implemented in Python using the built-in `turtle` graphics module. The player controls a snake to collect food, grow in length, and avoid collisions with walls or itself.
 
 ## Features
-
+ 
 - Interactive game window using the `turtle` module
 - Dynamic food generation
 - Real-time score tracking
