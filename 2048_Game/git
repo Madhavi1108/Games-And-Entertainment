@@ -1,0 +1,240 @@
+import pygame
+import sys
+import random
+import pickle
+import os
+
+# --- Game Settings ---
+WIDTH, HEIGHT = 500, 600
+GRID_SIZE = 4
+TILE_SIZE = 100
+TILE_GAP = 10
+FPS = 60
+
+# --- Colors ---
+BACKGROUND_COLOR = (187, 173, 160)
+EMPTY_TILE_COLOR = (205, 193, 180)
+FONT_COLOR = (119, 110, 101)
+TILE_COLORS = {
+    2: (238, 228, 218),
+    4: (237, 224, 200),
+    8: (242, 177, 121),
+    16: (245, 149, 99),
+    32: (246, 124, 95),
+    64: (246, 94, 59),
+    128: (237, 207, 114),
+    256: (237, 204, 97),
+    512: (237, 200, 80),
+    1024: (237, 197, 63),
+    2048: (237, 194, 46)
+}
+
+# --- Save File Paths ---
+SAVE_FILE = "2048_save.pkl"
+HIGH_SCORE_FILE = "high_score.pkl"
+
+# --- Pygame Init ---
+pygame.init()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("2048 Game - Pygame Edition")
+clock = pygame.time.Clock()
+font = pygame.font.SysFont("Arial", 40, bold=True)
+small_font = pygame.font.SysFont("Arial", 24)
+
+
+# --- Utility Functions ---
+def get_empty_cells(grid):
+    return [(i, j) for i in range(GRID_SIZE) for j in range(GRID_SIZE) if grid[i][j] == 0]
+
+
+def add_random_tile(grid):
+    empty = get_empty_cells(grid)
+    if empty:
+        i, j = random.choice(empty)
+        grid[i][j] = 2 if random.random() < 0.9 else 4
+
+
+def draw_grid(grid, score, high_score, game_over):
+    screen.fill(BACKGROUND_COLOR)
+
+    # Score Display
+    score_text = small_font.render(f"Score: {score}", True, (255, 255, 255))
+    high_score_text = small_font.render(f"High Score: {high_score}", True, (255, 255, 255))
+    screen.blit(score_text, (20, 20))
+    screen.blit(high_score_text, (20, 50))
+
+    # Restart Button
+    restart_rect = pygame.Rect(WIDTH - 120, 20, 100, 40)
+    pygame.draw.rect(screen, (119, 110, 101), restart_rect, border_radius=8)
+    restart_text = small_font.render("Restart", True, (255, 255, 255))
+    text_rect = restart_text.get_rect(center=restart_rect.center)
+    screen.blit(restart_text, text_rect)
+
+    # Draw tiles
+    for i in range(GRID_SIZE):
+        for j in range(GRID_SIZE):
+            val = grid[i][j]
+            x = TILE_GAP + j * (TILE_SIZE + TILE_GAP)
+            y = 100 + i * (TILE_SIZE + TILE_GAP)
+            color = TILE_COLORS.get(val, (60, 58, 50)) if val != 0 else EMPTY_TILE_COLOR
+            pygame.draw.rect(screen, color, (x, y, TILE_SIZE, TILE_SIZE), border_radius=8)
+
+            if val != 0:
+                text = font.render(str(val), True, FONT_COLOR if val <= 4 else (255, 255, 255))
+                text_rect = text.get_rect(center=(x + TILE_SIZE / 2, y + TILE_SIZE / 2))
+                screen.blit(text, text_rect)
+
+    # Game Over
+    if game_over:
+        over_text = font.render("Game Over!", True, (255, 0, 0))
+        over_rect = over_text.get_rect(center=(WIDTH // 2, HEIGHT - 40))
+        screen.blit(over_text, over_rect)
+
+    pygame.display.flip()
+
+
+def move_left(grid):
+    score = 0
+    new_grid = []
+    for row in grid:
+        tight = [i for i in row if i != 0]
+        merged = []
+        i = 0
+        while i < len(tight):
+            if i + 1 < len(tight) and tight[i] == tight[i + 1]:
+                merged.append(tight[i] * 2)
+                score += tight[i] * 2
+                i += 2
+            else:
+                merged.append(tight[i])
+                i += 1
+        merged += [0] * (GRID_SIZE - len(merged))
+        new_grid.append(merged)
+    return new_grid, score
+
+
+def move_right(grid):
+    reversed_grid = [row[::-1] for row in grid]
+    moved_grid, score = move_left(reversed_grid)
+    return [row[::-1] for row in moved_grid], score
+
+
+def transpose(grid):
+    return [[grid[j][i] for j in range(GRID_SIZE)] for i in range(GRID_SIZE)]
+
+
+def move_up(grid):
+    transposed = transpose(grid)
+    moved, score = move_left(transposed)
+    return transpose(moved), score
+
+
+def move_down(grid):
+    transposed = transpose(grid)
+    moved, score = move_right(transposed)
+    return transpose(moved), score
+
+
+def is_game_over(grid):
+    if get_empty_cells(grid):
+        return False
+    for i in range(GRID_SIZE):
+        for j in range(GRID_SIZE - 1):
+            if grid[i][j] == grid[i][j + 1] or grid[j][i] == grid[j + 1][i]:
+                return False
+    return True
+
+
+# --- Save/Load ---
+def save_game(grid, score):
+    with open(SAVE_FILE, "wb") as f:
+        pickle.dump((grid, score), f)
+
+
+def load_game():
+    if os.path.exists(SAVE_FILE):
+        with open(SAVE_FILE, "rb") as f:
+            return pickle.load(f)
+    return None, 0
+
+
+def save_high_score(high_score):
+    with open(HIGH_SCORE_FILE, "wb") as f:
+        pickle.dump(high_score, f)
+
+
+def load_high_score():
+    if os.path.exists(HIGH_SCORE_FILE):
+        with open(HIGH_SCORE_FILE, "rb") as f:
+            return pickle.load(f)
+    return 0
+
+
+def restart_game(reset=False):
+    if not reset:
+        loaded_grid, loaded_score = load_game()
+        if loaded_grid:
+            return loaded_grid, loaded_score, is_game_over(loaded_grid)
+    new_grid = [[0] * GRID_SIZE for _ in range(GRID_SIZE)]
+    add_random_tile(new_grid)
+    add_random_tile(new_grid)
+    return new_grid, 0, False
+
+
+# --- Main Game Loop ---
+def main():
+    grid, score, game_over = restart_game()
+    high_score = load_high_score()
+
+    running = True
+    while running:
+        clock.tick(FPS)
+        draw_grid(grid, score, high_score, game_over)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                save_game(grid, score)
+                save_high_score(high_score)
+                running = False
+                break
+
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    grid, score, game_over = restart_game(reset=True)
+
+                if not game_over:
+                    moved = False
+                    if event.key == pygame.K_LEFT:
+                        new_grid, gained = move_left(grid)
+                        moved = new_grid != grid
+                    elif event.key == pygame.K_RIGHT:
+                        new_grid, gained = move_right(grid)
+                        moved = new_grid != grid
+                    elif event.key == pygame.K_UP:
+                        new_grid, gained = move_up(grid)
+                        moved = new_grid != grid
+                    elif event.key == pygame.K_DOWN:
+                        new_grid, gained = move_down(grid)
+                        moved = new_grid != grid
+                    else:
+                        continue
+
+                    if moved:
+                        grid = new_grid
+                        score += gained
+                        high_score = max(score, high_score)
+                        add_random_tile(grid)
+                        if is_game_over(grid):
+                            game_over = True
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                if WIDTH - 120 <= mouse_x <= WIDTH - 20 and 20 <= mouse_y <= 60:
+                    grid, score, game_over = restart_game(reset=True)
+
+    pygame.quit()
+    sys.exit()
+
+
+if __name__ == "__main__":
+    main()
