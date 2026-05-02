@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --candy-red:    #FF4D6D;
+  --candy-blue:   #4361EE;
+  --candy-green:  #2EC4B6;
+  --candy-yellow: #FFBE0B;
+  --candy-purple: #8B5CF6;
+  --candy-orange: #F77F00;
+  --candy-pink:   #FF69B4;
+
+  --bg-deep:   #0D0221;
+  --bg-mid:    #1A0533;
+  --bg-light:  #2D1050;
+  --panel-bg:  rgba(255,255,255,0.06);
+  --border:    rgba(255,255,255,0.12);
+  --text-main: #F0E6FF;
+  --text-muted: rgba(240,230,255,0.55);
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-main);
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-mid); }
+::-webkit-scrollbar-thumb { background: var(--candy-purple); border-radius: 99px; }
